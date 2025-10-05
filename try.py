@@ -9,6 +9,7 @@ from geopy.geocoders import Nominatim
 from timezonefinder import TimezoneFinder
 from skyfield.api import load, wgs84
 from skyfield import almanac
+from skyfield.framelib import itrs
 from geopy.exc import GeocoderUnavailable, GeocoderTimedOut
 
 # ==============================================================================
@@ -371,10 +372,13 @@ def daily_moon_phase_names(eph, ts, start_dt, tz, days=30):
 def subpoint_of_body(eph, body, t):
     """Return (lat, lon) of the subpoint of a solar-system body at Skyfield time t."""
     try:
-        sp = eph[body].at(t).subpoint()
-        return sp.latitude.degrees, sp.longitude.degrees
+        # Compute the apparent position as seen from Earth's center, then
+        # convert into the Earth-fixed ITRS frame to obtain latitude/longitude.
+        app = eph['earth'].at(t).observe(eph[body]).apparent()
+        lat, lon, _ = app.frame_latlon(itrs)
+        return lat.degrees, lon.degrees
     except Exception:
-        # fallback: compute geocentric vector and convert to lat/lon via .subpoint on apparent
+        # Fallback: compute the apparent subpoint as seen from Earth
         try:
             sp = eph['earth'].at(t).observe(eph[body]).apparent().subpoint()
             return sp.latitude.degrees, sp.longitude.degrees
@@ -386,15 +390,81 @@ def nearest_city_for(lat, lon):
     """Use Nominatim reverse geocoding to get a nearby city name; return display string."""
     try:
         geolocator = Nominatim(user_agent="cosmic_compass")
-        loc = geolocator.reverse(f"{lat}, {lon}", zoom=10, language='en', timeout=10)
-        if not loc:
-            return None
-        addr = loc.raw.get('address', {})
-        for key in ('city', 'town', 'village', 'hamlet', 'county'):
-            if addr.get(key):
-                return addr.get(key)
-        # fallback to display_name
-        return loc.raw.get('display_name')
+        # Try a few zoom levels and timeouts to improve chances of finding a nearby locality
+        for zoom, timeout in ((10, 10), (8, 8), (6, 6)):
+            try:
+                loc = geolocator.reverse(f"{lat}, {lon}", zoom=zoom, timeout=timeout)
+            except TypeError:
+                # some geopy versions have different signature; try without keywords
+                loc = geolocator.reverse(f"{lat}, {lon}")
+            except Exception:
+                loc = None
+            if loc:
+                try:
+                    addr = loc.raw.get('address', {})
+                except Exception:
+                    addr = {}
+                name = None
+                for key in ('city', 'town', 'village', 'hamlet', 'county'):
+                    if addr.get(key):
+                        name = addr.get(key)
+                        break
+                country = addr.get('country')
+                if name and country:
+                    return f"{name}, {country}"
+                if name:
+                    return name
+                if country:
+                    return country
+                # fallback to display_name when available
+                try:
+                    dn = loc.raw.get('display_name')
+                    if dn:
+                        return dn
+                except Exception:
+                    pass
+        # If reverse geocoding didn't return anything useful, fall back to an
+        # offline nearest-city list (small sample of major cities). This ensures
+        # we always return a readable place even when the point is over ocean
+        # or Nominatim is unavailable.
+        def haversine_km(a_lat, a_lon, b_lat, b_lon):
+            import math
+            R = 6371.0
+            phi1 = math.radians(a_lat); phi2 = math.radians(b_lat)
+            dphi = math.radians(b_lat - a_lat); dlambda = math.radians(b_lon - a_lon)
+            a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
+            return 2 * R * math.asin(math.sqrt(a))
+
+        # Small fallback list (city, country, lat, lon) - keeps file small yet useful
+        FALLBACK_CITIES = [
+            ("Reykjavik", "Iceland", 64.1466, -21.9426),
+            ("Cape Town", "South Africa", -33.9249, 18.4241),
+            ("Lima", "Peru", -12.0464, -77.0428),
+            ("Honolulu", "United States", 21.3069, -157.8583),
+            ("Auckland", "New Zealand", -36.8485, 174.7633),
+            ("Lisbon", "Portugal", 38.7223, -9.1393),
+            ("Tokyo", "Japan", 35.6895, 139.6917),
+            ("Sydney", "Australia", -33.8688, 151.2093),
+            ("Los Angeles", "United States", 34.0522, -118.2437),
+            ("London", "United Kingdom", 51.5074, -0.1278),
+            ("Moscow", "Russia", 55.7558, 37.6176),
+            ("New York", "United States", 40.7128, -74.0060),
+            ("Mumbai", "India", 19.0760, 72.8777),
+            ("Cairo", "Egypt", 30.0444, 31.2357),
+            ("Santiago", "Chile", -33.4489, -70.6693),
+            ("Jakarta", "Indonesia", -6.2088, 106.8456),
+            ("Singapore", "Singapore", 1.3521, 103.8198),
+            ("Buenos Aires", "Argentina", -34.6037, -58.3816),
+            ("Madrid", "Spain", 40.4168, -3.7038),
+            ("Rome", "Italy", 41.9028, 12.4964),
+        ]
+        best = None; best_d = None
+        for city, country, clat, clon in FALLBACK_CITIES:
+            d = haversine_km(lat, lon, clat, clon)
+            if best_d is None or d < best_d:
+                best = (city, country, d); best_d = d
+        if best:
+            return f"{best[0]}, {best[1]} (~{int(best[2])} km)"
     except (GeocoderUnavailable, GeocoderTimedOut, Exception):
         return None
 
@@ -654,12 +724,22 @@ if __name__ == "__main__":
             moon_local, moon_tz = (None, None) if moon_lat is None else local_time_at(moon_lat, moon_lon)
 
             print('\nSub-point summary:')
+            # Always show lat/lon when available and include nearest city/country if found
             if sun_lat is not None:
-                print(f"  Sun zenith (subsolar) at: {sun_city or f'{sun_lat:.3f},{sun_lon:.3f}'} (tz: {sun_tz}) local time: {sun_local.strftime('%b %d, %Y, %I:%M %p') if sun_local else 'n/a'}")
+                sun_loc_str = f"{sun_lat:.5f}, {sun_lon:.5f}"
+                if sun_city:
+                    sun_loc_str += f"  — nearest: {sun_city}"
+                sun_time_str = sun_local.strftime('%b %d, %Y, %I:%M %p') if sun_local else 'n/a'
+                print(f"  Sun zenith (subsolar): {sun_loc_str} (tz: {sun_tz}) local time: {sun_time_str}")
             else:
                 print('  Sun zenith: n/a')
+
             if moon_lat is not None:
-                print(f"  Moon zenith (sublunar) at: {moon_city or f'{moon_lat:.3f},{moon_lon:.3f}'} (tz: {moon_tz}) local time: {moon_local.strftime('%b %d, %Y, %I:%M %p') if moon_local else 'n/a'}")
+                moon_loc_str = f"{moon_lat:.5f}, {moon_lon:.5f}"
+                if moon_city:
+                    moon_loc_str += f"  — nearest: {moon_city}"
+                moon_time_str = moon_local.strftime('%b %d, %Y, %I:%M %p') if moon_local else 'n/a'
+                print(f"  Moon zenith (sublunar): {moon_loc_str} (tz: {moon_tz}) local time: {moon_time_str}")
             else:
                 print('  Moon zenith: n/a')
         except Exception:
