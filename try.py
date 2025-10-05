@@ -16,14 +16,17 @@ from geopy.exc import GeocoderUnavailable, GeocoderTimedOut
 # Carve your will here. The script will obey this Hukm (Command) without question.
 # ==============================================================================
 
-LOCATION_MODE = "AUTO" 
-CITY = "Delhi"
-STATE = ""
-COUNTRY = "India"
-LATITUDE = 28.6139
-LONGITUDE = 77.2090
+LOCATION_MODE = "" #"AUTO" 
+CITY = "Moscow"
+STATE = "Idaho"
+COUNTRY = "USA"
+LATITUDE = "" #28.6139
+LONGITUDE = "" #77.2090
 PRAYER_METHOD_ANGLES = {"fajr": 18.0, "isha": 18.0}
 MADHAB = "hanafi"
+
+# compare with https://www.timeanddate.com/moon/@5790218 (moon)
+# compare with https://www.timeanddate.com/astronomy/@5790218 (sun)
 
 # ==============================================================================
 
@@ -397,9 +400,22 @@ def nearest_city_for(lat, lon):
 
 if __name__ == "__main__":
     location = None
-    if LOCATION_MODE == "ADDRESS": location = get_location_by_address(CITY, STATE, COUNTRY)
-    elif LOCATION_MODE == "COORDS": location = get_location_by_coords(LATITUDE, LONGITUDE)
-    else: location = get_location_by_ip()
+    # Normalize the mode; treat empty string ("") as ADDRESS so users can
+    # set LOCATION_MODE = "" to force city/state/country lookup.
+    mode = (LOCATION_MODE or "").strip().upper()
+    if mode == "" or mode == "ADDRESS":
+        location = get_location_by_address(CITY, STATE, COUNTRY)
+    elif mode == "COORDS":
+        # allow empty-string LATITUDE/LONGITUDE: if coords lookup fails,
+        # fall back to address lookup so users can leave lat/lon as "".
+        location = get_location_by_coords(LATITUDE, LONGITUDE)
+        if not location:
+            location = get_location_by_address(CITY, STATE, COUNTRY)
+    elif mode == "AUTO":
+        location = get_location_by_ip()
+    else:
+        # Unrecognized mode: fall back to AUTO (IP-based) lookup
+        location = get_location_by_ip()
 
     if not location:
         print("The cosmos remains veiled. Location could not be determined based on the Sankalpa.")
