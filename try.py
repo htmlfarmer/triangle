@@ -9,6 +9,7 @@ from geopy.geocoders import Nominatim
 from timezonefinder import TimezoneFinder
 from skyfield.api import load, wgs84
 from skyfield import almanac
+from geopy.exc import GeocoderUnavailable, GeocoderTimedOut
 
 # ==============================================================================
 # --- SANKALPA INSCRIPTION (THE SACRED DECREE) ---
@@ -325,6 +326,75 @@ def calculate_moon_mysteries(eph, observer, ts, t0, t1, tz):
 def format_time(dt_object):
     return dt_object.strftime('%I:%M %p') if dt_object else "Does not occur today"
 
+
+def daily_moon_phase_names(eph, ts, start_dt, tz, days=30):
+    """Return a list of (date, phase_name) for each day of the lunation starting at start_dt.
+
+    start_dt should be a timezone-aware datetime in tz representing the new moon time (or any start).
+    We sample once per day (local noon) and classify into one of 8 categories.
+    """
+    names = []
+    # helper to get fraction illuminated at a given datetime
+    def frac_at(dt):
+        t = ts.from_datetime(dt.astimezone(pytz.utc))
+        return almanac.fraction_illuminated(eph, 'moon', t)
+
+    # sample each day at local noon to represent that day's phase
+    for n in range(days):
+        day_dt = (start_dt + timedelta(days=n)).replace(hour=12, minute=0, second=0, microsecond=0)
+        f = frac_at(day_dt)
+        # estimate slope by comparing to the previous half-day and next half-day
+        f_prev = frac_at(day_dt - timedelta(hours=12))
+        f_next = frac_at(day_dt + timedelta(hours=12))
+        increasing = (f_next > f_prev)
+
+        # classification thresholds
+        if f < 0.02:
+            phase = 'New Moon'
+        elif f <= 0.49:
+            phase = 'Waxing Crescent' if increasing else 'Waning Crescent'
+        elif 0.49 < f < 0.51:
+            phase = 'First Quarter' if increasing else 'Third Quarter'
+        elif f <= 0.99:
+            phase = 'Waxing Gibbous' if increasing else 'Waning Gibbous'
+        else:
+            phase = 'Full Moon'
+
+        names.append((day_dt.date(), phase))
+
+    return names
+
+
+def subpoint_of_body(eph, body, t):
+    """Return (lat, lon) of the subpoint of a solar-system body at Skyfield time t."""
+    try:
+        sp = eph[body].at(t).subpoint()
+        return sp.latitude.degrees, sp.longitude.degrees
+    except Exception:
+        # fallback: compute geocentric vector and convert to lat/lon via .subpoint on apparent
+        try:
+            sp = eph['earth'].at(t).observe(eph[body]).apparent().subpoint()
+            return sp.latitude.degrees, sp.longitude.degrees
+        except Exception:
+            return None, None
+
+
+def nearest_city_for(lat, lon):
+    """Use Nominatim reverse geocoding to get a nearby city name; return display string."""
+    try:
+        geolocator = Nominatim(user_agent="cosmic_compass")
+        loc = geolocator.reverse(f"{lat}, {lon}", zoom=10, language='en', timeout=10)
+        if not loc:
+            return None
+        addr = loc.raw.get('address', {})
+        for key in ('city', 'town', 'village', 'hamlet', 'county'):
+            if addr.get(key):
+                return addr.get(key)
+        # fallback to display_name
+        return loc.raw.get('display_name')
+    except (GeocoderUnavailable, GeocoderTimedOut, Exception):
+        return None
+
 if __name__ == "__main__":
     location = None
     if LOCATION_MODE == "ADDRESS": location = get_location_by_address(CITY, STATE, COUNTRY)
@@ -442,9 +512,141 @@ if __name__ == "__main__":
             print(f"     Direction (azimuth): {fmt_deg(az)}")
             print(f"     Altitude:            {fmt_deg(alt)}")
             print(f"     Distance:            {fmt_dist(distance)}")
-            print(f"     Next Full Moon:      {next_full.strftime('%b %d, %Y, %I:%M %p') if next_full else 'n/a'}")
-            print(f"     Next New Moon:       {next_new.strftime('%b %d, %Y, %I:%M %p') if next_new else 'n/a'}")
+            print(f"     Full Moon:           {next_full.strftime('%b %d, %Y, %I:%M %p') if next_full else 'n/a'}")
+            print(f"     New Moon:            {next_new.strftime('%b %d, %Y, %I:%M %p') if next_new else 'n/a'}")
+            # compute exact phase instants for the upcoming lunation (new, first, full, last)
+            phase_f = almanac.moon_phases(eph)
+            phase_t0 = ts.from_datetime(now - timedelta(days=1))
+            phase_t1 = ts.from_datetime(now + timedelta(days=40))
+            phase_times, phase_vals = almanac.find_discrete(phase_t0, phase_t1, phase_f)
+            exact_phases = {}
+            for tt, pv in zip(phase_times, phase_vals):
+                name = almanac.MOON_PHASES[pv]
+                if name not in exact_phases:
+                    exact_phases[name] = tt.utc_datetime().astimezone(tz)
+
+            # print daily phases for the upcoming lunation starting at next_new
+            if next_new:
+                phases = daily_moon_phase_names(eph, ts, next_new, tz, days=30)
+                # condense to one representative date per canonical phase
+                canonical = [
+                    'New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous',
+                    'Full Moon', 'Waning Gibbous', 'Third Quarter', 'Waning Crescent'
+                ]
+                found = {}
+                for d, p in phases:
+                    if p in canonical and p not in found:
+                        found[p] = d
+                        # stop early if we found all
+                        if len(found) == len(canonical):
+                            break
+
+                print('\nUpcoming Lunation:')
+                for p in canonical:
+                    # compute representative exact instants for waxing/waning thresholds
+                    # thresholds: 25% and 75% illumination
+                    def find_threshold_crossings(threshold, start_dt, end_dt):
+                        t0 = ts.from_datetime(start_dt - timedelta(days=1))
+                        t1 = ts.from_datetime(end_dt + timedelta(days=1))
+                        def above(t):
+                            return almanac.fraction_illuminated(eph, 'moon', t) > threshold
+                        times_t, events_t = almanac.find_discrete(t0, t1, above)
+                        return [tt.utc_datetime().astimezone(tz) for tt in times_t], events_t
+
+                    # Determine window boundaries
+                    new_dt = exact_phases.get('New Moon')
+                    fq_dt = exact_phases.get('First Quarter')
+                    full_dt = exact_phases.get('Full Moon')
+                    lq_dt = exact_phases.get('Last Quarter')
+                    # try to determine next new after lq if available in exact_phases list
+                    next_new_dt = None
+                    if new_dt:
+                        # if there are multiple new instants we might have the next one in exact_phases; otherwise estimate
+                        # find any phase_times labeled 'New Moon' after new_dt
+                        new_candidates = [tt.utc_datetime().astimezone(tz) for tt,pv in zip(phase_times, phase_vals) if almanac.MOON_PHASES[pv]=='New Moon' and tt.utc_datetime().astimezone(tz) > new_dt]
+                        if new_candidates:
+                            next_new_dt = new_candidates[0]
+
+                    # find 25% crossings
+                    crossings25, events25 = [], []
+                    try:
+                        crossings25, events25 = find_threshold_crossings(0.25, new_dt or now, next_new_dt or (new_dt + timedelta(days=30) if new_dt else now + timedelta(days=30)))
+                    except Exception:
+                        pass
+                    crossings75, events75 = [], []
+                    try:
+                        crossings75, events75 = find_threshold_crossings(0.75, new_dt or now, next_new_dt or (new_dt + timedelta(days=30) if new_dt else now + timedelta(days=30)))
+                    except Exception:
+                        pass
+
+                    # helper to pick crossing inside an interval
+                    def pick_between(crossings, start, end):
+                        for c in crossings:
+                            if start and end and c >= start and c <= end:
+                                return c
+                        return None
+
+                    if p == 'Full Moon':
+                        print(f"  {p}: {exact_phases.get('Full Moon').strftime('%b %d, %Y, %I:%M %p') if exact_phases.get('Full Moon') else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
+                    elif p == 'New Moon':
+                        print(f"  {p}: {exact_phases.get('New Moon').strftime('%b %d, %Y, %I:%M %p') if exact_phases.get('New Moon') else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
+                    elif p == 'First Quarter':
+                        print(f"  {p}: {exact_phases.get('First Quarter').strftime('%b %d, %Y, %I:%M %p') if exact_phases.get('First Quarter') else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
+                    elif p == 'Third Quarter' or p == 'Last Quarter':
+                        print(f"  Third Quarter: {exact_phases.get('Last Quarter').strftime('%b %d, %Y, %I:%M %p') if exact_phases.get('Last Quarter') else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
+                    elif p == 'Waxing Crescent':
+                        # 25% crossing between New and First Quarter
+                        val = pick_between(crossings25, new_dt, fq_dt)
+                        print(f"  {p}: {val.strftime('%b %d, %Y, %I:%M %p') if val else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
+                    elif p == 'Waxing Gibbous':
+                        # 75% crossing between First Quarter and Full
+                        val = pick_between(crossings75, fq_dt, full_dt)
+                        print(f"  {p}: {val.strftime('%b %d, %Y, %I:%M %p') if val else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
+                    elif p == 'Waning Gibbous':
+                        # 75% crossing between Full and Last Quarter
+                        val = pick_between(crossings75, full_dt, lq_dt)
+                        print(f"  {p}: {val.strftime('%b %d, %Y, %I:%M %p') if val else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
+                    elif p == 'Waning Crescent':
+                        # 25% crossing between Last Quarter and next New
+                        val = pick_between(crossings25, lq_dt, next_new_dt)
+                        print(f"  {p}: {val.strftime('%b %d, %Y, %I:%M %p') if val else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
+                    else:
+                        print(f"  {p}: {found.get(p).isoformat() if found.get(p) else 'n/a'}")
         else:
             print("\n🌙 Moon data unavailable (ephemeris load failed).")
-        
+
+        # compute and print subsolar and sublunar city estimates
+        try:
+            t_now_sf = ts.from_datetime(now)
+            sun_lat, sun_lon = subpoint_of_body(eph, 'sun', t_now_sf)
+            moon_lat, moon_lon = subpoint_of_body(eph, 'moon', t_now_sf)
+
+            sun_city = None if sun_lat is None else nearest_city_for(sun_lat, sun_lon)
+            moon_city = None if moon_lat is None else nearest_city_for(moon_lat, moon_lon)
+
+            def local_time_at(lat, lon):
+                try:
+                    tf = TimezoneFinder(); tzname = tf.timezone_at(lng=lon, lat=lat)
+                    if not tzname: return None, None
+                    now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
+                    lt = now_utc.astimezone(pytz.timezone(tzname))
+                    return lt, tzname
+                except Exception:
+                    return None, None
+
+            sun_local, sun_tz = (None, None) if sun_lat is None else local_time_at(sun_lat, sun_lon)
+            moon_local, moon_tz = (None, None) if moon_lat is None else local_time_at(moon_lat, moon_lon)
+
+            print('\nSub-point summary:')
+            if sun_lat is not None:
+                print(f"  Sun zenith (subsolar) at: {sun_city or f'{sun_lat:.3f},{sun_lon:.3f}'} (tz: {sun_tz}) local time: {sun_local.strftime('%b %d, %Y, %I:%M %p') if sun_local else 'n/a'}")
+            else:
+                print('  Sun zenith: n/a')
+            if moon_lat is not None:
+                print(f"  Moon zenith (sublunar) at: {moon_city or f'{moon_lat:.3f},{moon_lon:.3f}'} (tz: {moon_tz}) local time: {moon_local.strftime('%b %d, %Y, %I:%M %p') if moon_local else 'n/a'}")
+            else:
+                print('  Moon zenith: n/a')
+        except Exception:
+            pass
+
         print("-" * 45)
