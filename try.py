@@ -172,7 +172,15 @@ def calculate_moon_mysteries(eph, observer, ts, t0, t1, tz):
         # meridian crossings (transits / antitransits)
         mer = almanac.meridian_transits(eph, eph['moon'], observer)
         times_mer, states_mer = almanac.find_discrete(search_start, search_end, mer)
-        transit_list = [_to_dt(t) for t in times_mer]
+        # choose the upper transit (maximum altitude) among candidates
+        transit_candidates = []
+        for t_mer in times_mer:
+            try:
+                alt_deg = (eph['earth'] + observer).at(t_mer).observe(eph['moon']).apparent().altaz()[0].degrees
+            except Exception:
+                alt_deg = None
+            transit_candidates.append(( _to_dt(t_mer), alt_deg ))
+        transit_list = [dt for dt, alt in transit_candidates]
 
         def choose_best(events):
             if not events:
@@ -184,7 +192,25 @@ def calculate_moon_mysteries(eph, observer, ts, t0, t1, tz):
             return min(events, key=lambda x: abs((x - midpoint).total_seconds()))
 
         moon_times['rise'] = choose_best(rise_list)
-        moon_times['transit'] = choose_best(transit_list)
+        # choose_best for transit should prefer the candidate with highest altitude
+        def choose_best_transit(candidates):
+            if not candidates:
+                return None
+            # candidates is list of (datetime, altitude)
+            # prefer those inside the local day
+            inside = [c for c in candidates if c[0] >= day_start and c[0] < day_end and c[1] is not None]
+            if inside:
+                # return the one with maximum altitude
+                return max(inside, key=lambda x: x[1])[0]
+            # otherwise pick the candidate with the largest altitude overall
+            with_alt = [c for c in candidates if c[1] is not None]
+            if with_alt:
+                return max(with_alt, key=lambda x: x[1])[0]
+            # fallback to nearest in time
+            midpoint = day_start + (day_end - day_start) / 2
+            return min([c[0] for c in candidates], key=lambda x: abs((x - midpoint).total_seconds()))
+
+        moon_times['transit'] = choose_best_transit(transit_candidates)
         moon_times['set'] = choose_best(set_list)
     except Exception:
         pass
@@ -201,7 +227,7 @@ def calculate_moon_mysteries(eph, observer, ts, t0, t1, tz):
         while t <= sample_end:
             sf_t = ts.from_datetime(t)
             try:
-                alt = eph['moon'].at(sf_t).observe(observer).apparent().altaz()[0].degrees
+                alt = (eph['earth'] + observer).at(sf_t).observe(eph['moon']).apparent().altaz()[0].degrees
             except Exception:
                 alt = None
             times.append(t); altitudes.append(alt)
@@ -292,7 +318,7 @@ def calculate_moon_mysteries(eph, observer, ts, t0, t1, tz):
     alt_search_start = ts.from_datetime(day_start - timedelta(days=3))
     alt_search_end = ts.from_datetime(day_end + timedelta(days=3))
     def moon_above_45(t):
-        alt = eph['moon'].at(t).observe(observer).apparent().altaz()[0].degrees
+        alt = (eph['earth'] + observer).at(t).observe(eph['moon']).apparent().altaz()[0].degrees
         return alt > 45.0
 
     try:
@@ -304,13 +330,20 @@ def calculate_moon_mysteries(eph, observer, ts, t0, t1, tz):
         # transitions we compare consecutive event states. An ascent is where
         # events45[i] is True and (i==0 or events45[i-1] is False). A descent is
         # where events45[i] is False and (i==0 or events45[i-1] is True).
+        # determine initial state at the start of the search window to avoid
+        # misclassifying the very first transition
+        try:
+            initial_state = bool(moon_above_45(alt_search_start))
+        except Exception:
+            initial_state = None
+
         for i, t_obj in enumerate(crossings):
             state = bool(events45[i])
-            prev_state = bool(events45[i-1]) if i > 0 else None
+            prev_state = bool(events45[i-1]) if i > 0 else initial_state
             if t_obj >= day_start and t_obj < day_end:
-                if state and (prev_state is False or prev_state is None) and ascent is None:
+                if state and (prev_state is False) and ascent is None:
                     ascent = t_obj
-                if not state and (prev_state is True or prev_state is None) and descent is None:
+                if (not state) and (prev_state is True) and descent is None:
                     descent = t_obj
 
         # If not found inside day, fall back to nearest crossings
@@ -322,6 +355,77 @@ def calculate_moon_mysteries(eph, observer, ts, t0, t1, tz):
 
         moon_times['ascent_45'] = ascent
         moon_times['descent_45'] = descent
+    except Exception:
+        pass
+
+    # Post-process around transit if available: prefer an ascent that occurs
+    # before the transit and a descent after the transit to keep ordering
+    try:
+        tr = moon_times.get('transit')
+        if tr is not None:
+            window_start = tr - timedelta(days=1)
+            window_end = tr + timedelta(days=1)
+            t0w = ts.from_datetime(window_start); t1w = ts.from_datetime(window_end)
+            times_w, events_w = almanac.find_discrete(t0w, t1w, moon_above_45)
+            crossings_w = [_to_dt(t) for t in times_w]
+            # compute initial state at window start
+            try:
+                init_state_w = bool(moon_above_45(ts.from_datetime(window_start)))
+            except Exception:
+                init_state_w = None
+
+            asc_candidate = None; desc_candidate = None
+            for i, cdt in enumerate(crossings_w):
+                state = bool(events_w[i])
+                prev_state = bool(events_w[i-1]) if i > 0 else init_state_w
+                # ascent: False -> True; descent: True -> False
+                if cdt <= tr and state and prev_state is False:
+                    # keep latest ascent before transit
+                    if asc_candidate is None or cdt > asc_candidate:
+                        asc_candidate = cdt
+                if cdt >= tr and (not state) and prev_state is True:
+                    # keep earliest descent after transit
+                    if desc_candidate is None or cdt < desc_candidate:
+                        desc_candidate = cdt
+
+            if asc_candidate:
+                moon_times['ascent_45'] = asc_candidate
+            if desc_candidate:
+                moon_times['descent_45'] = desc_candidate
+    except Exception:
+        pass
+
+    # If we have rise, transit and set for the day, prefer an ascent between
+    # rise->transit and a descent between transit->set so times are from the
+    # same observable event window.
+    try:
+        r = moon_times.get('rise'); tr = moon_times.get('transit'); s = moon_times.get('set')
+        if r and tr and s:
+            # small margins to ensure we include nearby crossings
+            margin = timedelta(hours=1)
+            t0a = ts.from_datetime(max(r - margin, day_start - timedelta(days=1)))
+            t1a = ts.from_datetime(min(tr + margin, day_end + timedelta(days=1)))
+            times_a, events_a = almanac.find_discrete(t0a, t1a, moon_above_45)
+            crossings_a = [_to_dt(t) for t in times_a]
+            # pick latest True crossing that is >= rise and <= transit
+            asc = None
+            for tt, ev in zip(crossings_a, events_a):
+                if ev and tt >= r and tt <= tr:
+                    asc = tt
+            if asc:
+                moon_times['ascent_45'] = asc
+
+            t0d = ts.from_datetime(max(tr - margin, day_start - timedelta(days=1)))
+            t1d = ts.from_datetime(min(s + margin, day_end + timedelta(days=1)))
+            times_d, events_d = almanac.find_discrete(t0d, t1d, moon_above_45)
+            crossings_d = [_to_dt(t) for t in times_d]
+            desc = None
+            for tt, ev in zip(crossings_d, events_d):
+                if (not ev) and tt >= tr and tt <= s:
+                    desc = tt
+                    break
+            if desc:
+                moon_times['descent_45'] = desc
     except Exception:
         pass
 
