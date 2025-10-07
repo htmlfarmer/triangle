@@ -308,8 +308,19 @@ def analyze_sub_point_locations(target_lat, target_lon, eph, ts, body_name):
         dist = haversine_km(t_lat, t_lon, city[2], city[3])
         return city[4] / (dist**2) if dist > 1 else float('inf')
 
-    pop_n = max(northern, key=lambda c: get_influence_score(c, target_lat, target_lon), default=None)
-    pop_s = max(southern, key=lambda c: get_influence_score(c, target_lat, target_lon), default=None)
+    def find_most_influenced(candidates, t_lat, t_lon, exclude=None):
+        if exclude:
+            candidates = [c for c in candidates if c[0] != exclude[0]]
+        if not candidates: return None
+        return max(candidates, key=lambda c: get_influence_score(c, t_lat, t_lon))
+
+    pop_n = find_most_influenced(northern, target_lat, target_lon)
+    if pop_n and pop_n[0] == closest[0]: # De-duplicate
+        pop_n = find_most_influenced(northern, target_lat, target_lon, exclude=pop_n)
+
+    pop_s = find_most_influenced(southern, target_lat, target_lon)
+    if pop_s and pop_s[0] == closest[0]: # De-duplicate
+        pop_s = find_most_influenced(southern, target_lat, target_lon, exclude=pop_s)
     
     def format_city(city_data, t_lat, t_lon):
         if not city_data: return "N/A"
