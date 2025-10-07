@@ -26,9 +26,198 @@ LONGITUDE = "" #77.2090
 PRAYER_METHOD_ANGLES = {"fajr": 18.0, "isha": 18.0}
 MADHAB = "hanafi"
 
-# compare with https://www.timeanddate.com/moon/@5790218 (moon)
-# compare with https://www.timeanddate.com/astronomy/@5790218 (sun)
+# ==============================================================================
+# --- Single Source of Truth for City Data ---
+# This list is used for both exact lookups and as a fallback for finding the
+# nearest city when online services are unavailable.
+# Format: (City, Country, Latitude, Longitude)
+# ==============================================================================
+WORLD_CITIES = [
+    ("New York", "USA", 40.7128, -74.0060),
+    ("Los Angeles", "USA", 34.0522, -118.2437),
+    ("Chicago", "USA", 41.8781, -87.6298),
+    ("Houston", "USA", 29.7604, -95.3698),
+    ("Phoenix", "USA", 33.4484, -112.0740),
+    ("London", "UK", 51.5074, -0.1278),
+    ("Tokyo", "Japan", 35.6895, 139.6917),
+    ("Moscow", "Russia", 55.7558, 37.6176),
+    ("Cairo", "Egypt", 30.0444, 31.2357),
+    ("Beijing", "China", 39.9042, 116.4074),
+    ("Sydney", "Australia", -33.8688, 151.2093),
+    ("São Paulo", "Brazil", -23.5505, -46.6333),
+    ("Mexico City", "Mexico", 19.4326, -99.1332),
+    ("Mumbai", "India", 19.0760, 72.8777),
+    ("Istanbul", "Turkey", 41.0082, 28.9784),
+    ("Abu Dhabi", "UAE", 24.4539, 54.3773),
+    ("Abuja", "Nigeria", 9.0765, 7.3986),
+    ("Accra", "Ghana", 5.6037, -0.1870),
+    ("Addis Ababa", "Ethiopia", 9.0300, 38.7400),
+    ("Algiers", "Algeria", 36.7750, 3.0589),
+    ("Amman", "Jordan", 31.9539, 35.9106),
+    ("Amsterdam", "Netherlands", 52.3676, 4.9041),
+    ("Ankara", "Turkey", 39.9334, 32.8597),
+    ("Antananarivo", "Madagascar", -18.8792, 47.5079),
+    ("Asuncion", "Paraguay", -25.2637, -57.5759),
+    ("Athens", "Greece", 37.9838, 23.7275),
+    ("Baghdad", "Iraq", 33.3152, 44.3661),
+    ("Baku", "Azerbaijan", 40.4093, 49.8671),
+    ("Bamako", "Mali", 12.6392, -8.0029),
+    ("Bangkok", "Thailand", 13.7563, 100.5018),
+    ("Bangui", "Central African Republic", 4.3947, 18.5582),
+    ("Beirut", "Lebanon", 33.8938, 35.5018),
+    ("Belgrade", "Serbia", 44.7866, 20.4489),
+    ("Berlin", "Germany", 52.5200, 13.4050),
+    ("Bern", "Switzerland", 46.9480, 7.4474),
+    ("Bogota", "Colombia", 4.7110, -74.0721),
+    ("Brasilia", "Brazil", -15.8267, -47.9218),
+    ("Bratislava", "Slovakia", 48.1486, 17.1077),
+    ("Brazzaville", "Congo", -4.2634, 15.2429),
+    ("Brussels", "Belgium", 50.8503, 4.3517),
+    ("Bucharest", "Romania", 44.4268, 26.1025),
+    ("Budapest", "Hungary", 47.4979, 19.0402),
+    ("Buenos Aires", "Argentina", -34.6037, -58.3816),
+    ("Canberra", "Australia", -35.2809, 149.1300),
+    ("Caracas", "Venezuela", 10.4806, -66.9036),
+    ("Chisinau", "Moldova", 47.0105, 28.8638),
+    ("Copenhagen", "Denmark", 55.6761, 12.5683),
+    ("Dakar", "Senegal", 14.7167, -17.4677),
+    ("Damascus", "Syria", 33.5138, 36.2765),
+    ("Dhaka", "Bangladesh", 23.8103, 90.4125),
+    ("Dili", "Timor-Leste", -8.5586, 125.5739),
+    ("Djibouti", "Djibouti", 11.5890, 43.1450),
+    ("Doha", "Qatar", 25.276987, 51.520008),
+    ("Dublin", "Ireland", 53.3498, -6.2603),
+    ("Dushanbe", "Tajikistan", 38.5598, 68.7870),
+    ("Freetown", "Sierra Leone", 8.4844, -13.2299),
+    ("Gaborone", "Botswana", -24.6282, 25.9231),
+    ("Georgetown", "Guyana", 6.8013, -58.1551),
+    ("Guatemala City", "Guatemala", 14.6349, -90.5069),
+    ("Hanoi", "Vietnam", 21.0278, 105.8342),
+    ("Harare", "Zimbabwe", -17.8252, 31.0335),
+    ("Havana", "Cuba", 23.1136, -82.3666),
+    ("Helsinki", "Finland", 60.1699, 24.9384),
+    ("Islamabad", "Pakistan", 33.6844, 73.0479),
+    ("Jakarta", "Indonesia", -6.2088, 106.8456),
+    ("Jerusalem", "Israel", 31.7683, 35.2137),
+    ("Juba", "South Sudan", 4.8594, 31.5713),
+    ("Kabul", "Afghanistan", 34.5553, 69.2075),
+    ("Kampala", "Uganda", 0.3476, 32.5825),
+    ("Kathmandu", "Nepal", 27.7172, 85.3240),
+    ("Khartoum", "Sudan", 15.5007, 32.5599),
+    ("Kiev", "Ukraine", 50.4501, 30.5234),
+    ("Kigali", "Rwanda", -1.9441, 30.0619),
+    ("Kingston", "Jamaica", 17.9712, -76.7930),
+    ("Kinshasa", "Congo", -4.4419, 15.2663),
+    ("Kuala Lumpur", "Malaysia", 3.1390, 101.6869),
+    ("Kuwait City", "Kuwait", 29.3759, 47.9774),
+    ("La Paz", "Bolivia", -16.4897, -68.1193),
+    ("Libreville", "Gabon", 0.4162, 9.4673),
+    ("Lilongwe", "Malawi", -13.9626, 33.7741),
+    ("Lima", "Peru", -12.0464, -77.0428),
+    ("Lisbon", "Portugal", 38.7223, -9.1393),
+    ("Ljubljana", "Slovenia", 46.0569, 14.5058),
+    ("Lome", "Togo", 6.1319, 1.2228),
+    ("Luanda", "Angola", -8.8399, 13.2894),
+    ("Lusaka", "Zambia", -15.3875, 28.3228),
+    ("Luxembourg", "Luxembourg", 49.6116, 6.1319),
+    ("Madrid", "Spain", 40.4168, -3.7038),
+    ("Malabo", "Equatorial Guinea", 3.7523, 8.7741),
+    ("Male", "Maldives", 4.1755, 73.5093),
+    ("Managua", "Nicaragua", 12.1150, -86.2362),
+    ("Manama", "Bahrain", 26.2285, 50.5860),
+    ("Manila", "Philippines", 14.5995, 120.9842),
+    ("Maputo", "Mozambique", -25.9692, 32.5732),
+    ("Maseru", "Lesotho", -29.3157, 27.4849),
+    ("Mbabane", "Eswatini", -26.3054, 31.1367),
+    ("Mecca", "Saudi Arabia", 21.3891, 39.8579),
+    ("Minsk", "Belarus", 53.9045, 27.5615),
+    ("Mogadishu", "Somalia", 2.0469, 45.3182),
+    ("Monaco", "Monaco", 43.7384, 7.4246),
+    ("Monrovia", "Liberia", 6.3007, -10.7958),
+    ("Montevideo", "Uruguay", -34.9011, -56.1645),
+    ("Moroni", "Comoros", -11.7022, 43.2541),
+    ("Muscat", "Oman", 23.5859, 58.3829),
+    ("N'Djamena", "Chad", 12.1348, 15.0557),
+    ("Nairobi", "Kenya", -1.2921, 36.8219),
+    ("Nassau", "Bahamas", 25.0470, -77.3554),
+    ("Naypyidaw", "Myanmar", 19.7633, 96.0785),
+    ("New Delhi", "India", 28.6139, 77.2090),
+    ("Niamey", "Niger", 13.5116, 2.1254),
+    ("Nicosia", "Cyprus", 35.1856, 33.3823),
+    ("Nouakchott", "Mauritania", 18.0735, -15.9582),
+    ("Nuku'alofa", "Tonga", -21.1393, -175.2048),
+    ("Nur-Sultan", "Kazakhstan", 51.1694, 71.4491),
+    ("Oslo", "Norway", 59.9139, 10.7522),
+    ("Ottawa", "Canada", 45.4215, -75.6972),
+    ("Ouagadougou", "Burkina Faso", 12.3714, -1.5197),
+    ("Panama City", "Panama", 8.9824, -79.5199),
+    ("Paramaribo", "Suriname", 5.8520, -55.2038),
+    ("Paris", "France", 48.8566, 2.3522),
+    ("Phnom Penh", "Cambodia", 11.5564, 104.9282),
+    ("Podgorica", "Montenegro", 42.4304, 19.2594),
+    ("Port Louis", "Mauritius", -20.1609, 57.5012),
+    ("Port Moresby", "Papua New Guinea", -9.4431, 147.1803),
+    ("Port-au-Prince", "Haiti", 18.5392, -72.3364),
+    ("Port of Spain", "Trinidad and Tobago", 10.6548, -61.5097),
+    ("Porto-Novo", "Benin", 6.4969, 2.6285),
+    ("Prague", "Czech Republic", 50.0755, 14.4378),
+    ("Praia", "Cabo Verde", 14.9330, -23.5133),
+    ("Pretoria", "South Africa", -25.7479, 28.2293),
+    ("Pyongyang", "North Korea", 39.0392, 125.7625),
+    ("Quito", "Ecuador", -0.1807, -78.4678),
+    ("Rabat", "Morocco", 34.0209, -6.8416),
+    ("Reykjavik", "Iceland", 64.1466, -21.9426),
+    ("Riga", "Latvia", 56.9496, 24.1052),
+    ("Riyadh", "Saudi Arabia", 24.7136, 46.6753),
+    ("Rome", "Italy", 41.9028, 12.4964),
+    ("Roseau", "Dominica", 15.3013, -61.3882),
+    ("San Jose", "Costa Rica", 9.9281, -84.0907),
+    ("San Juan", "Puerto Rico", 18.4663, -66.1057),
+    ("San Marino", "San Marino", 43.9424, 12.4578),
+    ("San Salvador", "El Salvador", 13.6929, -89.2182),
+    ("Sana'a", "Yemen", 15.3694, 44.1910),
+    ("Santiago", "Chile", -33.4489, -70.6693),
+    ("Santo Domingo", "Dominican Republic", 18.4861, -69.9312),
+    ("Sao Tome", "Sao Tome and Principe", 0.3365, 6.7277),
+    ("Sarajevo", "Bosnia and Herzegovina", 43.8563, 18.4131),
+    ("Seoul", "South Korea", 37.5665, 126.9780),
+    ("Singapore", "Singapore", 1.3521, 103.8198),
+    ("Skopje", "North Macedonia", 41.9981, 21.4254),
+    ("Sofia", "Bulgaria", 42.6977, 23.3219),
+    ("Sri Jayawardenepura Kotte", "Sri Lanka", 6.9023, 79.8590),
+    ("Stockholm", "Sweden", 59.3293, 18.0686),
+    ("Sucre", "Bolivia", -19.0196, -65.2619),
+    ("Suva", "Fiji", -18.1416, 178.4419),
+    ("Taipei", "Taiwan", 25.0330, 121.5654),
+    ("Tallinn", "Estonia", 59.4370, 24.7536),
+    ("Tashkent", "Uzbekistan", 41.2995, 69.2401),
+    ("Tbilisi", "Georgia", 41.7151, 44.8271),
+    ("Tegucigalpa", "Honduras", 14.0723, -87.1921),
+    ("Tehran", "Iran", 35.6892, 51.3890),
+    ("Thimphu", "Bhutan", 27.4728, 89.6390),
+    ("Tirana", "Albania", 41.3275, 19.8187),
+    ("Tiraspol", "Moldova", 46.8403, 29.6105),
+    ("Tripoli", "Libya", 32.8872, 13.1913),
+    ("Tunis", "Tunisia", 36.8065, 10.1815),
+    ("Ulaanbaatar", "Mongolia", 47.9179, 106.8833),
+    ("Vaduz", "Liechtenstein", 47.1410, 9.5215),
+    ("Valletta", "Malta", 35.8989, 14.5146),
+    ("Victoria", "Seychelles", -4.6236, 55.4520),
+    ("Vienna", "Austria", 48.2082, 16.3738),
+    ("Vientiane", "Laos", 17.9748, 102.6309),
+    ("Vilnius", "Lithuania", 54.6872, 25.2797),
+    ("Warsaw", "Poland", 50.04969, 19.944544),
+    ("Washington, D.C.", "USA", 38.9072, -77.0369),
+    ("Wellington", "New Zealand", -41.2865, 174.7762),
+    ("Windhoek", "Namibia", -22.5594, 17.0832),
+    ("Yamoussoukro", "Côte d'Ivoire", 6.8206, -5.2768),
+    ("Yaounde", "Cameroon", 3.8480, 11.5021),
+    ("Yerevan", "Armenia", 40.1792, 44.4991),
+    ("Zagreb", "Croatia", 45.8150, 15.9819)
+]
 
+# Create a dictionary for fast, exact-match lookups from the master list.
+CITIES = {f"{city}, {country}": (lat, lon) for city, country, lat, lon in WORLD_CITIES}
 # ==============================================================================
 
 class LocalPrayerCalculator:
@@ -113,6 +302,15 @@ def get_location_by_ip():
     except Exception: return None
 
 def get_location_by_address(city, state, country):
+    # First, check our local list of cities for a quick lookup.
+    city_key = f"{city}, {country}"
+    if city_key in CITIES:
+        lat, lon = CITIES[city_key]
+        tf = TimezoneFinder()
+        timezone_str = tf.timezone_at(lng=lon, lat=lat)
+        return {"latitude": lat, "longitude": lon, "timezone": timezone_str, "address": city_key}
+
+    # If not in our local list, use the online geocoder.
     try:
         geolocator = Nominatim(user_agent="cosmic_compass")
         address_str = ", ".join(filter(None, [city, state, country]))
@@ -480,7 +678,13 @@ def subpoint_of_body(eph, body, t):
         # convert into the Earth-fixed ITRS frame to obtain latitude/longitude.
         app = eph['earth'].at(t).observe(eph[body]).apparent()
         lat, lon, _ = app.frame_latlon(itrs)
-        return lat.degrees, lon.degrees
+        
+        # --- FIX: Normalize longitude to the -180 to 180 degree range ---
+        lon_deg = lon.degrees
+        if lon_deg > 180.0:
+            lon_deg -= 360.0
+        
+        return lat.degrees, lon_deg
     except Exception:
         # Fallback: compute the apparent subpoint as seen from Earth
         try:
@@ -527,10 +731,8 @@ def nearest_city_for(lat, lon):
                         return dn
                 except Exception:
                     pass
-        # If reverse geocoding didn't return anything useful, fall back to an
-        # offline nearest-city list (small sample of major cities). This ensures
-        # we always return a readable place even when the point is over ocean
-        # or Nominatim is unavailable.
+        # If reverse geocoding didn't return anything useful, fall back to our
+        # master offline city list.
         def haversine_km(a_lat, a_lon, b_lat, b_lon):
             import math
             R = 6371.0
@@ -538,32 +740,10 @@ def nearest_city_for(lat, lon):
             dphi = math.radians(b_lat - a_lat); dlambda = math.radians(b_lon - a_lon)
             a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
             return 2 * R * math.asin(math.sqrt(a))
-
-        # Small fallback list (city, country, lat, lon) - keeps file small yet useful
-        FALLBACK_CITIES = [
-            ("Reykjavik", "Iceland", 64.1466, -21.9426),
-            ("Cape Town", "South Africa", -33.9249, 18.4241),
-            ("Lima", "Peru", -12.0464, -77.0428),
-            ("Honolulu", "United States", 21.3069, -157.8583),
-            ("Auckland", "New Zealand", -36.8485, 174.7633),
-            ("Lisbon", "Portugal", 38.7223, -9.1393),
-            ("Tokyo", "Japan", 35.6895, 139.6917),
-            ("Sydney", "Australia", -33.8688, 151.2093),
-            ("Los Angeles", "United States", 34.0522, -118.2437),
-            ("London", "United Kingdom", 51.5074, -0.1278),
-            ("Moscow", "Russia", 55.7558, 37.6176),
-            ("New York", "United States", 40.7128, -74.0060),
-            ("Mumbai", "India", 19.0760, 72.8777),
-            ("Cairo", "Egypt", 30.0444, 31.2357),
-            ("Santiago", "Chile", -33.4489, -70.6693),
-            ("Jakarta", "Indonesia", -6.2088, 106.8456),
-            ("Singapore", "Singapore", 1.3521, 103.8198),
-            ("Buenos Aires", "Argentina", -34.6037, -58.3816),
-            ("Madrid", "Spain", 40.4168, -3.7038),
-            ("Rome", "Italy", 41.9028, 12.4964),
-        ]
+            
         best = None; best_d = None
-        for city, country, clat, clon in FALLBACK_CITIES:
+        # --- MODIFICATION: Use the master WORLD_CITIES list ---
+        for city, country, clat, clon in WORLD_CITIES:
             d = haversine_km(lat, lon, clat, clon)
             if best_d is None or d < best_d:
                 best = (city, country, d); best_d = d
@@ -596,37 +776,49 @@ if __name__ == "__main__":
     else:
         ts = load.timescale()
         eph = None
-        try:
-            # Preferred: let skyfield manage download
-            eph = load('de421.bsp')
-        except Exception:
-            # Try a manual download into a local cache directory so we can load from file.
-            cache_dir = os.path.join(os.path.dirname(__file__), '.cache')
-            os.makedirs(cache_dir, exist_ok=True)
-            local_path = os.path.join(cache_dir, 'de421.bsp')
-            url = 'https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de421.bsp'
+        
+        # --- Updated Ephemeris Loading Logic ---
+        # Prioritize using a local de421.bsp file if it exists.
+        
+        local_bsp_file = 'de421.bsp'
+        if os.path.exists(local_bsp_file):
+            print("Found local de421.bsp file. Using it for calculations.")
+            eph = load(local_bsp_file)
+        else:
+            print("Local de421.bsp file not found. Attempting to download...")
             try:
-                # first try with normal verification
-                r = requests.get(url, timeout=30)
-                r.raise_for_status()
-                with open(local_path, 'wb') as fh: fh.write(r.content)
-            except Exception:
+                # Preferred: let skyfield manage download
+                eph = load('de421.bsp')
+            except Exception as e:
+                print(f"Skyfield download failed: {e}. Trying manual download.")
+                # Try a manual download into a local cache directory so we can load from file.
+                cache_dir = os.path.join(os.path.dirname(__file__), '.cache')
+                os.makedirs(cache_dir, exist_ok=True)
+                local_path = os.path.join(cache_dir, 'de421.bsp')
+                url = 'https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de421.bsp'
                 try:
-                    # As a last resort try without SSL verification (not recommended)
-                    import urllib3
-                    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-                    r = requests.get(url, timeout=30, verify=False)
+                    # first try with normal verification
+                    r = requests.get(url, timeout=30)
                     r.raise_for_status()
                     with open(local_path, 'wb') as fh: fh.write(r.content)
                 except Exception:
-                    print("Warning: could not download ephemeris. Moon information will be skipped.")
-                    local_path = None
+                    try:
+                        # As a last resort try without SSL verification (not recommended)
+                        import urllib3
+                        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                        r = requests.get(url, timeout=30, verify=False)
+                        r.raise_for_status()
+                        with open(local_path, 'wb') as fh: fh.write(r.content)
+                    except Exception:
+                        print("Warning: could not download ephemeris. Moon information will be skipped.")
+                        local_path = None
 
-            if local_path and os.path.exists(local_path):
-                try:
-                    eph = load(local_path)
-                except Exception:
-                    eph = None
+                if local_path and os.path.exists(local_path):
+                    try:
+                        eph = load(local_path)
+                    except Exception:
+                        eph = None
+        
         observer = wgs84.latlon(location['latitude'], location['longitude'])
         tz = pytz.timezone(location['timezone']); now = datetime.now(tz)
         t0 = ts.from_datetime(now); t1 = ts.from_datetime(now + timedelta(days=1))
@@ -671,16 +863,7 @@ if __name__ == "__main__":
             astrometric = topo.observe(eph['moon'])
             apparent = astrometric.apparent()
             alt, az, distance = apparent.altaz()
-            # get upcoming moon phases (next 30 days)
-            phase_f = almanac.moon_phases(eph)
-            phase_t0 = ts.from_datetime(now)
-            phase_t1 = ts.from_datetime(now + timedelta(days=30))
-            phase_times, phase_vals = almanac.find_discrete(phase_t0, phase_t1, phase_f)
-            next_new = None; next_full = None
-            for tt, pv in zip(phase_times, phase_vals):
-                name = almanac.MOON_PHASES[pv]
-                if name == 'New Moon' and next_new is None: next_new = tt.utc_datetime().astimezone(tz)
-                if name == 'Full Moon' and next_full is None: next_full = tt.utc_datetime().astimezone(tz)
+            
             print("\n🌙 The Moon's Mysteries (Local Time)")
             print(f"   Moonrise:    {format_time(moon_times['rise'])}")
             print(f"   Ascent 45°:  {format_time(moon_times['ascent_45'])}")
@@ -702,106 +885,34 @@ if __name__ == "__main__":
             print(f"     Direction (azimuth): {fmt_deg(az)}")
             print(f"     Altitude:            {fmt_deg(alt)}")
             print(f"     Distance:            {fmt_dist(distance)}")
-            print(f"     Full Moon:           {next_full.strftime('%b %d, %Y, %I:%M %p') if next_full else 'n/a'}")
-            print(f"     New Moon:            {next_new.strftime('%b %d, %Y, %I:%M %p') if next_new else 'n/a'}")
-            # compute exact phase instants for the upcoming lunation (new, first, full, last)
+            
+            # --- FIX: Find and display upcoming phases in chronological order ---
             phase_f = almanac.moon_phases(eph)
-            phase_t0 = ts.from_datetime(now - timedelta(days=1))
-            phase_t1 = ts.from_datetime(now + timedelta(days=40))
+            # Start search from now and look ahead 35 days to find the next of all 4 phases
+            phase_t0 = ts.from_datetime(now)
+            phase_t1 = ts.from_datetime(now + timedelta(days=35))
             phase_times, phase_vals = almanac.find_discrete(phase_t0, phase_t1, phase_f)
-            exact_phases = {}
+
+            upcoming_phases = []
+            found_phases = set() # To store names of phases we've already found
+
             for tt, pv in zip(phase_times, phase_vals):
                 name = almanac.MOON_PHASES[pv]
-                if name not in exact_phases:
-                    exact_phases[name] = tt.utc_datetime().astimezone(tz)
+                if name not in found_phases:
+                    upcoming_phases.append({'name': name, 'date': tt.utc_datetime().astimezone(tz)})
+                    found_phases.add(name)
+            
+            # Sort the found phases by date to ensure chronological order
+            upcoming_phases.sort(key=lambda x: x['date'])
 
-            # print daily phases for the upcoming lunation starting at next_new
-            if next_new:
-                phases = daily_moon_phase_names(eph, ts, next_new, tz, days=30)
-                # condense to one representative date per canonical phase
-                canonical = [
-                    'New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous',
-                    'Full Moon', 'Waning Gibbous', 'Third Quarter', 'Waning Crescent'
-                ]
-                found = {}
-                for d, p in phases:
-                    if p in canonical and p not in found:
-                        found[p] = d
-                        # stop early if we found all
-                        if len(found) == len(canonical):
-                            break
+            print('\n   Upcoming Primary Phases:')
+            if upcoming_phases:
+                for phase in upcoming_phases:
+                    date_str = phase['date'].strftime('%b %d, %Y, %I:%M %p')
+                    print(f"     {phase['name']:<15}: {date_str}")
+            else:
+                print("     Could not determine upcoming phases.")
 
-                print('\nUpcoming Lunation:')
-                for p in canonical:
-                    # compute representative exact instants for waxing/waning thresholds
-                    # thresholds: 25% and 75% illumination
-                    def find_threshold_crossings(threshold, start_dt, end_dt):
-                        t0 = ts.from_datetime(start_dt - timedelta(days=1))
-                        t1 = ts.from_datetime(end_dt + timedelta(days=1))
-                        def above(t):
-                            return almanac.fraction_illuminated(eph, 'moon', t) > threshold
-                        times_t, events_t = almanac.find_discrete(t0, t1, above)
-                        return [tt.utc_datetime().astimezone(tz) for tt in times_t], events_t
-
-                    # Determine window boundaries
-                    new_dt = exact_phases.get('New Moon')
-                    fq_dt = exact_phases.get('First Quarter')
-                    full_dt = exact_phases.get('Full Moon')
-                    lq_dt = exact_phases.get('Last Quarter')
-                    # try to determine next new after lq if available in exact_phases list
-                    next_new_dt = None
-                    if new_dt:
-                        # if there are multiple new instants we might have the next one in exact_phases; otherwise estimate
-                        # find any phase_times labeled 'New Moon' after new_dt
-                        new_candidates = [tt.utc_datetime().astimezone(tz) for tt,pv in zip(phase_times, phase_vals) if almanac.MOON_PHASES[pv]=='New Moon' and tt.utc_datetime().astimezone(tz) > new_dt]
-                        if new_candidates:
-                            next_new_dt = new_candidates[0]
-
-                    # find 25% crossings
-                    crossings25, events25 = [], []
-                    try:
-                        crossings25, events25 = find_threshold_crossings(0.25, new_dt or now, next_new_dt or (new_dt + timedelta(days=30) if new_dt else now + timedelta(days=30)))
-                    except Exception:
-                        pass
-                    crossings75, events75 = [], []
-                    try:
-                        crossings75, events75 = find_threshold_crossings(0.75, new_dt or now, next_new_dt or (new_dt + timedelta(days=30) if new_dt else now + timedelta(days=30)))
-                    except Exception:
-                        pass
-
-                    # helper to pick crossing inside an interval
-                    def pick_between(crossings, start, end):
-                        for c in crossings:
-                            if start and end and c >= start and c <= end:
-                                return c
-                        return None
-
-                    if p == 'Full Moon':
-                        print(f"  {p}: {exact_phases.get('Full Moon').strftime('%b %d, %Y, %I:%M %p') if exact_phases.get('Full Moon') else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
-                    elif p == 'New Moon':
-                        print(f"  {p}: {exact_phases.get('New Moon').strftime('%b %d, %Y, %I:%M %p') if exact_phases.get('New Moon') else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
-                    elif p == 'First Quarter':
-                        print(f"  {p}: {exact_phases.get('First Quarter').strftime('%b %d, %Y, %I:%M %p') if exact_phases.get('First Quarter') else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
-                    elif p == 'Third Quarter' or p == 'Last Quarter':
-                        print(f"  Third Quarter: {exact_phases.get('Last Quarter').strftime('%b %d, %Y, %I:%M %p') if exact_phases.get('Last Quarter') else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
-                    elif p == 'Waxing Crescent':
-                        # 25% crossing between New and First Quarter
-                        val = pick_between(crossings25, new_dt, fq_dt)
-                        print(f"  {p}: {val.strftime('%b %d, %Y, %I:%M %p') if val else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
-                    elif p == 'Waxing Gibbous':
-                        # 75% crossing between First Quarter and Full
-                        val = pick_between(crossings75, fq_dt, full_dt)
-                        print(f"  {p}: {val.strftime('%b %d, %Y, %I:%M %p') if val else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
-                    elif p == 'Waning Gibbous':
-                        # 75% crossing between Full and Last Quarter
-                        val = pick_between(crossings75, full_dt, lq_dt)
-                        print(f"  {p}: {val.strftime('%b %d, %Y, %I:%M %p') if val else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
-                    elif p == 'Waning Crescent':
-                        # 25% crossing between Last Quarter and next New
-                        val = pick_between(crossings25, lq_dt, next_new_dt)
-                        print(f"  {p}: {val.strftime('%b %d, %Y, %I:%M %p') if val else (found.get(p).isoformat() if found.get(p) else 'n/a')}")
-                    else:
-                        print(f"  {p}: {found.get(p).isoformat() if found.get(p) else 'n/a'}")
         else:
             print("\n🌙 Moon data unavailable (ephemeris load failed).")
 
