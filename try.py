@@ -56,10 +56,110 @@ WORLD_CITIES = [
     ("Bogota", "Colombia", 4.711, -74.0721, 10778000), ("Jakarta", "Indonesia", -6.2088, 106.8456, 10770487),
     ("Chennai", "India", 13.0827, 80.2707, 10729000), ("Lima", "Peru", -12.0464, -77.0428, 10555000),
     ("Bangkok", "Thailand", 13.7563, 100.5018, 10389000), ("New York", "USA", 40.7128, -74.006, 8398748),
-    ("London", "UK", 51.5074, -0.1278, 8982000), ("Seoul", "South Korea", 37.5665, 126.978, 9776000)
+    ("London", "UK", 51.5074, -0.1278, 8982000), ("Seoul", "South Korea", 37.5665, 126.978, 9776000),
+    ("Nagoya", "Japan", 35.1815, 136.9066, 9557000), ("Ho Chi Minh City", "Vietnam", 10.8231, 106.6297, 8993000),
+    ("Tehran", "Iran", 35.6892, 51.389, 8847000), ("Hong Kong", "China", 22.3193, 114.1694, 7497000),
+    ("Los Angeles", "USA", 34.0522, -118.2437, 3990456), ("Madrid", "Spain", 40.4168, -3.7038, 6642000),
+    ("Singapore", "Singapore", 1.3521, 103.8198, 5850342), ("Santiago", "Chile", -33.4489, -70.6693, 6724000),
+    ("Riyadh", "Saudi Arabia", 24.7136, 46.6753, 7009100), ("Saint Petersburg", "Russia", 59.9311, 30.3609, 5384342),
+    ("Sydney", "Australia", -33.8688, 151.2093, 5312163), ("Melbourne", "Australia", -37.8136, 144.9631, 5078193),
+    ("Baghdad", "Iraq", 33.3152, 44.3661, 7144000), ("Toronto", "Canada", 43.6532, -79.3832, 2930000),
+    ("Berlin", "Germany", 52.52, 13.405, 3645000), ("Rome", "Italy", 41.9028, 12.4964, 2872800),
+    ("Chicago", "USA", 41.8781, -87.6298, 2705994), ("Houston", "USA", 29.7604, -95.3698, 2325502),
+    ("Phoenix", "USA", 33.4484, -112.074, 1660272), ("Philadelphia", "USA", 39.9526, -75.1652, 1584138),
+    ("Dallas", "USA", 32.7767, -96.797, 1345047), ("San Francisco", "USA", 37.7749, -122.4194, 883305),
+    ("Boston", "USA", 42.3601, -71.0589, 694583), ("Washington, D.C.", "USA", 38.9072, -77.0369, 705749),
+    ("Miami", "USA", 25.7617, -80.1918, 470914), ("Atlanta", "USA", 33.749, -84.388, 506811),
+    ("Seattle", "USA", 47.6062, -122.3321, 744955), ("Denver", "USA", 39.7392, -104.9903, 716492),
+    ("Vancouver", "Canada", 49.2827, -123.1207, 675218), ("Montreal", "Canada", 45.5017, -73.5673, 1780000),
+    ("Calgary", "Canada", 51.0447, -114.0719, 1285711), ("Ottawa", "Canada", 45.4215, -75.6972, 994837),
+    ("Johannesburg", "South Africa", -26.2041, 28.0473, 5635000), ("Cape Town", "South Africa", -33.9249, 18.4241, 4488545),
+    ("Nairobi", "Kenya", -1.2921, 36.8219, 4397073), ("Addis Ababa", "Ethiopia", 9.03, 38.74, 3384569),
+    ("Casablanca", "Morocco", 33.5731, -7.5898, 3359818), ("Accra", "Ghana", 5.6037, -0.187, 2291352),
+    ("Algiers", "Algeria", 36.775, 3.0589, 2712944), ("Tunis", "Tunisia", 36.8065, 10.1815, 638845),
+    ("Auckland", "New Zealand", -36.8485, 174.7633, 1657000), ("Wellington", "New Zealand", -41.2865, 174.7762, 212700),
+    ("Perth", "Australia", -31.9505, 115.8605, 2059484), ("Brisbane", "Australia", -27.4698, 153.0251, 2280000),
+    ("Adelaide", "Australia", -34.9285, 138.6007, 1345777), ("Canberra", "Australia", -35.2809, 149.13, 426704),
+    ("Honolulu", "USA", 21.3069, -157.8583, 351792), ("Reykjavik", "Iceland", 64.1466, -21.9426, 131345),
+    ("Helsinki", "Finland", 60.1699, 24.9384, 650058), ("Oslo", "Norway", 59.9139, 10.7522, 693494),
+    ("Stockholm", "Sweden", 59.3293, 18.0686, 975904), ("Copenhagen", "Denmark", 55.6761, 12.5683, 623404),
+    ("Dublin", "Ireland", 53.3498, -6.2603, 544107), ("Amsterdam", "Netherlands", 52.3676, 4.9041, 862965),
+    ("Brussels", "Belgium", 50.8503, 4.3517, 1209000), ("Vienna", "Austria", 48.2082, 16.3738, 1897000),
+    ("Prague", "Czech Republic", 50.0755, 14.4378, 1309000), ("Warsaw", "Poland", 50.0497, 19.9445, 1790658),
+    ("Budapest", "Hungary", 47.4979, 19.0402, 1752286), ("Kiev", "Ukraine", 50.4501, 30.5234, 2962180),
+    ("Bucharest", "Romania", 44.4268, 26.1025, 1836000), ("Athens", "Greece", 37.9838, 23.7275, 664046),
+    ("Lisbon", "Portugal", 38.7223, -9.1393, 504718), ("Geneva", "Switzerland", 46.2044, 6.1432, 201818),
+    ("Frankfurt", "Germany", 50.1109, 8.6821, 753056), ("Munich", "Germany", 48.1351, 11.582, 1472000),
+    ("Barcelona", "Spain", 41.3851, 2.1734, 1620343), ("Abu Dhabi", "UAE", 24.4539, 54.3773, 1483000),
+    ("Abuja", "Nigeria", 9.0765, 7.3986, 1235880), ("Amman", "Jordan", 31.9539, 35.9106, 4007526),
+    ("Ankara", "Turkey", 39.9334, 32.8597, 5445026), ("Antananarivo", "Madagascar", -18.8792, 47.5079, 1275207),
+    ("Asuncion", "Paraguay", -25.2637, -57.5759, 525252), ("Baku", "Azerbaijan", 40.4093, 49.8671, 2293100),
+    ("Bamako", "Mali", 12.6392, -8.0029, 2713000), ("Bangui", "Central African Republic", 4.3947, 18.5582, 794000),
+    ("Beirut", "Lebanon", 33.8938, 35.5018, 2000000), ("Belgrade", "Serbia", 44.7866, 20.4489, 1166763),
+    ("Bern", "Switzerland", 46.948, 7.4474, 133883), ("Bratislava", "Slovakia", 48.1486, 17.1077, 437725),
+    ("Brazzaville", "Congo", -4.2634, 15.2429, 1827000), ("Chisinau", "Moldova", 47.0105, 28.8638, 532513),
+    ("Dakar", "Senegal", 14.7167, -17.4677, 1146052), ("Damascus", "Syria", 33.5138, 36.2765, 1711000),
+    ("Dar es Salaam", "Tanzania", -6.7924, 39.2083, 4364541), ("Dili", "Timor-Leste", -8.5586, 125.5739, 222323),
+    ("Djibouti", "Djibouti", 11.589, 43.145, 562000), ("Doha", "Qatar", 25.277, 51.52, 2382000),
+    ("Dubai", "UAE", 25.2048, 55.2708, 3137000), ("Dushanbe", "Tajikistan", 38.5598, 68.787, 846400),
+    ("Edinburgh", "UK", 55.9533, -3.1883, 488050), ("Freetown", "Sierra Leone", 8.4844, -13.2299, 1055964),
+    ("Fortaleza", "Brazil", -3.7319, -38.5267, 2669342),("Gaborone", "Botswana", -24.6282, 25.9231, 231592), 
+    ("Georgetown", "Guyana", 6.8013, -58.1551, 118369), ("Guatemala City", "Guatemala", 14.6349, -90.5069, 994938), 
+    ("Hanoi", "Vietnam", 21.0278, 105.8342, 7785000), ("Harare", "Zimbabwe", -17.8252, 31.0335, 1485231), 
+    ("Havana", "Cuba", 23.1136, -82.3666, 2117625), ("Juba", "South Sudan", 4.8594, 31.5713, 525953), 
+    ("Kabul", "Afghanistan", 34.5553, 69.2075, 4222000), ("Kampala", "Uganda", 0.3476, 32.5825, 1680800), 
+    ("Kathmandu", "Nepal", 27.7172, 85.324, 1424000), ("Khartoum", "Sudan", 15.5007, 32.5599, 5274321), 
+    ("Kigali", "Rwanda", -1.9441, 30.0619, 859332), ("Kingston", "Jamaica", 17.9712, -76.793, 662433), 
+    ("Kuwait City", "Kuwait", 29.3759, 47.9774, 2989000), ("La Paz", "Bolivia", -16.4897, -68.1193, 757184), 
+    ("Libreville", "Gabon", 0.4162, 9.4673, 703904), ("Lilongwe", "Malawi", -13.9626, 33.7741, 989318), 
+    ("Ljubljana", "Slovenia", 46.0569, 14.5058, 284355), ("Lome", "Togo", 6.1319, 1.2228, 837437), 
+    ("Luanda", "Angola", -8.8399, 13.2894, 2571861), ("Lusaka", "Zambia", -15.3875, 28.3228, 1747152), 
+    ("Luxembourg", "Luxembourg", 49.6116, 6.1319, 122273), ("Malabo", "Equatorial Guinea", 3.7523, 8.7741, 297000), 
+    ("Male", "Maldives", 4.1755, 73.5093, 133412), ("Managua", "Nicaragua", 12.115, -86.2362, 1055247), 
+    ("Manama", "Bahrain", 26.2285, 50.586, 157474), ("Maputo", "Mozambique", -25.9692, 32.5732, 1088449), 
+    ("Maseru", "Lesotho", -29.3157, 27.4849, 330760), ("Mbabane", "Eswatini", -26.3054, 31.1367, 68000), 
+    ("Mecca", "Saudi Arabia", 21.3891, 39.8579, 2042000), ("Minsk", "Belarus", 53.9045, 27.5615, 2020600), 
+    ("Mogadishu", "Somalia", 2.0469, 45.3182, 2388000), ("Monaco", "Monaco", 43.7384, 7.4246, 38682), 
+    ("Monrovia", "Liberia", 6.3007, -10.7958, 1021762), ("Montevideo", "Uruguay", -34.9011, -56.1645, 1319108), 
+    ("Moroni", "Comoros", -11.7022, 43.2541, 62351), ("Muscat", "Oman", 23.5859, 58.3829, 1421409), 
+    ("N'Djamena", "Chad", 12.1348, 15.0557, 993492), ("Nassau", "Bahamas", 25.047, -77.3554, 274400), 
+    ("Naypyidaw", "Myanmar", 19.7633, 96.0785, 924608), ("Niamey", "Niger", 13.5116, 2.1254, 1292000), 
+    ("Nicosia", "Cyprus", 35.1856, 33.3823, 310355), ("Nouakchott", "Mauritania", 18.0735, -15.9582, 958199), 
+    ("Nuku'alofa", "Tonga", -21.1393, -175.2048, 23221), ("Nur-Sultan", "Kazakhstan", 51.1694, 71.4491, 1136008), 
+    ("Ouagadougou", "Burkina Faso", 12.3714, -1.5197, 2453498), ("Panama City", "Panama", 8.9824, -79.5199, 880691), 
+    ("Paramaribo", "Suriname", 5.852, -55.2038, 240924), ("Phnom Penh", "Cambodia", 11.5564, 104.9282, 2129371), 
+    ("Podgorica", "Montenegro", 42.4304, 19.2594, 150977), ("Port Louis", "Mauritius", -20.1609, 57.5012, 148108), 
+    ("Port Moresby", "Papua New Guinea", -9.4431, 147.1803, 364125), ("Port-au-Prince", "Haiti", 18.5392, -72.3364, 987311), 
+    ("Port of Spain", "Trinidad and Tobago", 10.6548, -61.5097, 18036), ("Porto-Novo", "Benin", 6.4969, 2.6285, 264320), 
+    ("Praia", "Cabo Verde", 14.933, -23.5133, 130271), ("Pretoria", "South Africa", -25.7479, 28.2293, 741652), 
+    ("Pyongyang", "North Korea", 39.0392, 125.7625, 2870000), ("Quito", "Ecuador", -0.1807, -78.4678, 1607734), 
+    ("Rabat", "Morocco", 34.0209, -6.8416, 577827), ("Riga", "Latvia", 56.9496, 24.1052, 632614), 
+    ("Roseau", "Dominica", 15.3013, -61.3882, 14741), ("San Jose", "Costa Rica", 9.9281, -84.0907, 333980), 
+    ("San Juan", "Puerto Rico", 18.4663, -66.1057, 342259), ("San Marino", "San Marino", 43.9424, 12.4578, 4211), 
+    ("San Salvador", "El Salvador", 13.6929, -89.2182, 258754), ("Sana'a", "Yemen", 15.3694, 44.191, 2545000), 
+    ("Santo Domingo", "Dominican Republic", 18.4861, -69.9312, 965040), ("Sao Tome", "Sao Tome and Principe", 0.3365, 6.7277, 71868), 
+    ("Sarajevo", "Bosnia and Herzegovina", 43.8563, 18.4131, 275524), ("Skopje", "North Macedonia", 41.9981, 21.4254, 506926), 
+    ("Sofia", "Bulgaria", 42.6977, 23.3219, 1241675), ("Sri Jayawardenepura Kotte", "Sri Lanka", 6.9023, 79.859, 115826), 
+    ("Sucre", "Bolivia", -19.0196, -65.2619, 237480), ("Suva", "Fiji", -18.1416, 178.4419, 88271), 
+    ("Taipei", "Taiwan", 25.033, 121.5654, 2646204), ("Tallinn", "Estonia", 59.437, 24.7536, 434562), 
+    ("Tashkent", "Uzbekistan", 41.2995, 69.2401, 2485900), ("Tbilisi", "Georgia", 41.7151, 44.8271, 1118035), 
+    ("Tegucigalpa", "Honduras", 14.0723, -87.1921, 990660), ("Thimphu", "Bhutan", 27.4728, 89.639, 114551), 
+    ("Tirana", "Albania", 41.3275, 19.8187, 418495), ("Tiraspol", "Moldova", 46.8403, 29.6105, 133807), 
+    ("Tripoli", "Libya", 32.8872, 13.1913, 1126000), ("Ulaanbaatar", "Mongolia", 47.9179, 106.8833, 1540000), 
+    ("Vaduz", "Liechtenstein", 47.141, 9.5215, 5696), ("Valletta", "Malta", 35.8989, 14.5146, 6444), 
+    ("Victoria", "Seychelles", -4.6236, 55.452, 26450), ("Vientiane", "Laos", 17.9748, 102.6309, 820000), 
+    ("Vilnius", "Lithuania", 54.6872, 25.2797, 539043), ("Windhoek", "Namibia", -22.5594, 17.0832, 268132), 
+    ("Yamoussoukro", "Côte d'Ivoire", 6.8206, -5.2768, 212670), ("Yaounde", "Cameroon", 3.848, 11.5021, 2765000), 
+    ("Yerevan", "Armenia", 40.1792, 44.4991, 1075800), ("Zagreb", "Croatia", 45.815, 15.9819, 806341)
 ]
 
 CITIES = {f"{c[0]}, {c[1]}": (c[2], c[3]) for c in WORLD_CITIES}
+
+def haversine_km(lat1, lon1, lat2, lon2):
+    """Calculates the distance between two points on Earth."""
+    R = 6371.0; phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    a = math.sin(math.radians(lat2 - lat1)/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(math.radians(lon2 - lon1)/2)**2
+    return 2 * R * math.asin(math.sqrt(a))
 
 class LocalPrayerCalculator:
     """Calculates prayer times from first principles."""
@@ -170,17 +270,14 @@ def calculate_inland_tides(eph, observer, ts, target_date, tz):
     
     tides = []
     try:
-        # Find all lunar transits (upper and lower) which correspond to high tides
-        t_transits, y_transits = almanac.find_discrete(search_start_ts, search_end_ts, almanac.meridian_transits(eph, eph['moon'], observer))
+        t_transits, _ = almanac.find_discrete(search_start_ts, search_end_ts, almanac.meridian_transits(eph, eph['moon'], observer))
         high_tides = sorted([_to_dt(t) for t in t_transits])
         
-        # Calculate low tides as the midpoints between high tides
         for i in range(len(high_tides) - 1):
             tides.append({'name': 'High Tide', 'time': high_tides[i]})
             low_tide_time = high_tides[i] + (high_tides[i+1] - high_tides[i]) / 2
             tides.append({'name': 'Low Tide', 'time': low_tide_time})
         if high_tides: tides.append({'name': 'High Tide', 'time': high_tides[-1]})
-
     except Exception: pass
     return sorted([t for t in tides if day_start <= t['time'] < day_start + timedelta(days=1)], key=lambda x: x['time'])
 
@@ -191,34 +288,41 @@ def subpoint_of_body(eph, body, t):
         lon_deg = lon.degrees - 360 if lon.degrees > 180 else lon.degrees
         return lat.degrees, lon_deg
     except Exception: return None, None
-def analyze_sub_point_locations(target_lat, target_lon):
-    def haversine_km(lat1, lon1, lat2, lon2):
-        R = 6371.0; phi1, phi2 = math.radians(lat1), math.radians(lat2)
-        a = math.sin(math.radians(lat2 - lat1)/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(math.radians(lon2 - lon1)/2)**2
-        return 2 * R * math.asin(math.sqrt(a))
+def analyze_sub_point_locations(target_lat, target_lon, eph, ts, body_name):
+    t0 = ts.now()
     
-    closest = min(WORLD_CITIES, key=lambda c: haversine_km(target_lat, target_lon, c[2], c[3]))
-    nearby = [c for c in WORLD_CITIES if haversine_km(target_lat, target_lon, c[2], c[3]) <= 5000]
-    northern, southern = [c for c in nearby if c[2] > 0], [c for c in nearby if c[2] < 0]
-    pop_n, pop_s = max(northern, key=lambda c: c[4], default=None), max(southern, key=lambda c: c[4], default=None)
+    visible_cities = []
+    for city_data in WORLD_CITIES:
+        city_obs = wgs84.latlon(city_data[2], city_data[3])
+        alt, _, _ = (eph['earth'] + city_obs).at(t0).observe(eph[body_name]).apparent().altaz()
+        if alt.degrees > 0:
+            visible_cities.append(city_data)
+    
+    if not visible_cities: visible_cities = WORLD_CITIES
+
+    closest = min(visible_cities, key=lambda c: haversine_km(target_lat, target_lon, c[2], c[3]))
+    
+    northern, southern = [c for c in visible_cities if c[2] > 0], [c for c in visible_cities if c[2] < 0]
+    
+    def get_influence_score(city, t_lat, t_lon):
+        dist = haversine_km(t_lat, t_lon, city[2], city[3])
+        return city[4] / (dist**2) if dist > 1 else float('inf')
+
+    pop_n = max(northern, key=lambda c: get_influence_score(c, target_lat, target_lon), default=None)
+    pop_s = max(southern, key=lambda c: get_influence_score(c, target_lat, target_lon), default=None)
     
     def format_city(city_data, t_lat, t_lon):
         if not city_data: return "N/A"
         dist = haversine_km(t_lat, t_lon, city_data[2], city_data[3])
         return f"{city_data[0]}, {city_data[1]} (~{int(dist)} km)"
 
-    return {'nearest': format_city(closest, target_lat, target_lon), 'populous_northern': format_city(pop_n, target_lat, target_lon), 'populous_southern': format_city(pop_s, target_lat, target_lon)}
+    return {'nearest': format_city(closest, target_lat, target_lon), 'most_influenced_north': format_city(pop_n, target_lat, target_lon), 'most_influenced_south': format_city(pop_s, target_lat, target_lon)}
 
 def find_global_tide_locations(eph, ts):
     t0 = ts.now()
     moon_lat, moon_lon = subpoint_of_body(eph, 'moon', t0)
     sun_lat, sun_lon = subpoint_of_body(eph, 'sun', t0)
     
-    def haversine_km(lat1, lon1, lat2, lon2):
-        R = 6371.0; phi1, phi2 = math.radians(lat1), math.radians(lat2)
-        a = math.sin(math.radians(lat2 - lat1)/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(math.radians(lon2 - lon1)/2)**2
-        return 2 * R * math.asin(math.sqrt(a))
-
     antipode_lon = (moon_lon + 180) % 360 - 180
     high_tide_points = [(moon_lat, moon_lon), (-moon_lat, antipode_lon), (sun_lat, sun_lon)]
     low_tide_points = [(0, (moon_lon + 90) % 360 - 180), (0, (moon_lon - 90) % 360 - 180)]
@@ -309,15 +413,19 @@ if __name__ == "__main__":
             print('\nSub-point & Global Tide Summary:')
             sun_lat, sun_lon = subpoint_of_body(eph, 'sun', t0)
             moon_lat, moon_lon = subpoint_of_body(eph, 'moon', t0)
-            sun_cities, moon_cities = analyze_sub_point_locations(sun_lat, sun_lon), analyze_sub_point_locations(moon_lat, moon_lon)
+            sun_cities = analyze_sub_point_locations(sun_lat, sun_lon, eph, ts, 'sun') if sun_lat is not None else None
+            moon_cities = analyze_sub_point_locations(moon_lat, moon_lon, eph, ts, 'moon') if moon_lat is not None else None
             global_tides = find_global_tide_locations(eph, ts)
             
-            print(f"  Sun Zenith:  {sun_lat:.2f}, {sun_lon:.2f} | Nearest: {sun_cities['nearest']}")
-            print(f"    > Populous North: {sun_cities['populous_northern']}")
-            print(f"    > Populous South: {sun_cities['populous_southern']}")
-            print(f"\n  Moon Zenith: {moon_lat:.2f}, {moon_lon:.2f} | Nearest: {moon_cities['nearest']}")
-            print(f"    > Populous North: {moon_cities['populous_northern']}")
-            print(f"    > Populous South: {moon_cities['populous_southern']}")
+            if sun_cities:
+                print(f"  Sun Zenith:  {sun_lat:.2f}, {sun_lon:.2f} | Nearest: {sun_cities['nearest']}")
+                print(f"    > Most Influenced (North): {sun_cities['most_influenced_north']}")
+                print(f"    > Most Influenced (South): {sun_cities['most_influenced_south']}")
+            if moon_cities:
+                print(f"\n  Moon Zenith: {moon_lat:.2f}, {moon_lon:.2f} | Nearest: {moon_cities['nearest']}")
+                print(f"    > Most Influenced (North): {moon_cities['most_influenced_north']}")
+                print(f"    > Most Influenced (South): {moon_cities['most_influenced_south']}")
+            
             print("\n  Global High Tides Near: " + ", ".join(global_tides['high']))
             print("  Global Low Tides Near:  " + ", ".join(global_tides['low']))
         else: print("\n🌙 Moon and Tide data unavailable (ephemeris file not found).")
