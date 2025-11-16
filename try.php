@@ -42,13 +42,17 @@ if ($isha !== '' && !is_numeric($isha)) $isha = '';
 
 // --- new: attempt to detect client IP and lookup lat/lon if not provided ---
 function get_client_ip() {
-    // prefer X-Forwarded-For (first entry), then Client-IP, then REMOTE_ADDR
+    // Prefer X-Forwarded-For (choose the first public IP), then Client-IP, then REMOTE_ADDR
     if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-        $ip = trim($parts[0]);
-        if ($ip) return $ip;
+        $parts = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+        // pick the first public IP in the list
+        foreach ($parts as $p) {
+            if ($p && !is_private_ip($p)) return $p;
+        }
+        // fallback to first entry if all are private
+        if (!empty($parts[0])) return $parts[0];
     }
-    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+    if (!empty($_SERVER['HTTP_CLIENT_IP']) && !is_private_ip($_SERVER['HTTP_CLIENT_IP'])) {
         return trim($_SERVER['HTTP_CLIENT_IP']);
     }
     return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
@@ -80,21 +84,52 @@ $detected_ip = get_client_ip();
 $geo_lookup_note = '';
 // Only attempt lookup if user did not supply lat/lon and IP appears public
 if (($lat === '' || $lon === '') && $detected_ip !== '' && !is_private_ip($detected_ip)) {
-    // use ip-api.com simple JSON endpoint with a short timeout
-    $url = 'http://ip-api.com/json/' . rawurlencode($detected_ip) . '?fields=status,message,lat,lon,query';
-    $ctx = stream_context_create(['http' => ['timeout' => 2]]); // 2s timeout
-    $json = @file_get_contents($url, false, $ctx);
+    // Prefer an HTTPS GeoIP provider (ipinfo.io) with a short timeout; fallback to ip-api.com
+    $tried = [];
+    $succeeded = false;
+
+    // ipinfo.io (HTTPS) - free tier has limits but is more reliable/secure
+    $url1 = 'https://ipinfo.io/' . rawurlencode($detected_ip) . '/json';
+    $ctx1 = stream_context_create(['http' => ['timeout' => 2], 'ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
+    $json = @file_get_contents($url1, false, $ctx1);
+    $tried[] = $url1;
     if ($json !== false) {
         $data = json_decode($json, true);
-        if (is_array($data) && isset($data['status']) && $data['status'] === 'success') {
-            if ($lat === '' && isset($data['lat'])) $lat = $data['lat'];
-            if ($lon === '' && isset($data['lon'])) $lon = $data['lon'];
-            $geo_lookup_note = 'GeoIP lookup succeeded for ' . ($data['query'] ?? $detected_ip);
-        } else {
-            $geo_lookup_note = 'GeoIP lookup failed: ' . ($data['message'] ?? 'unknown');
+        if (is_array($data) && !empty($data['loc'])) {
+            // ipinfo returns "loc" as "lat,lon"
+            $parts = explode(',', $data['loc']);
+            if (count($parts) === 2) {
+                if ($lat === '' && is_numeric($parts[0])) $lat = $parts[0];
+                if ($lon === '' && is_numeric($parts[1])) $lon = $parts[1];
+                $geo_lookup_note = 'GeoIP (ipinfo) succeeded for ' . ($data['ip'] ?? $detected_ip);
+                $succeeded = true;
+            }
+        } elseif (is_array($data) && isset($data['error'])) {
+            $geo_lookup_note = 'GeoIP ipinfo error: ' . json_encode($data['error']);
         }
-    } else {
-        $geo_lookup_note = 'GeoIP lookup request failed or timed out';
+    }
+
+    if (!$succeeded) {
+        // fallback to ip-api.com (HTTP) with short timeout
+        $url2 = 'http://ip-api.com/json/' . rawurlencode($detected_ip) . '?fields=status,message,lat,lon,query';
+        $ctx2 = stream_context_create(['http' => ['timeout' => 2]]); // 2s timeout
+        $json2 = @file_get_contents($url2, false, $ctx2);
+        $tried[] = $url2;
+        if ($json2 !== false) {
+            $data2 = json_decode($json2, true);
+            if (is_array($data2) && isset($data2['status']) && $data2['status'] === 'success') {
+                if ($lat === '' && isset($data2['lat'])) $lat = $data2['lat'];
+                if ($lon === '' && isset($data2['lon'])) $lon = $data2['lon'];
+                $geo_lookup_note = 'GeoIP (ip-api) succeeded for ' . ($data2['query'] ?? $detected_ip);
+                $succeeded = true;
+            } else {
+                $geo_lookup_note = 'GeoIP ip-api failed: ' . ($data2['message'] ?? 'unknown');
+            }
+        } else {
+            if (!$succeeded) {
+                $geo_lookup_note = 'GeoIP attempts failed: ' . implode(' ; ', $tried);
+            }
+        }
     }
 } elseif ($detected_ip !== '' && is_private_ip($detected_ip)) {
     $geo_lookup_note = 'Client IP is private/local, skipping GeoIP lookup';
@@ -116,8 +151,9 @@ if ($mode !== '')    $env['LOCATION_MODE'] = $mode;
 if ($city !== '')    $env['CITY'] = $city;
 if ($state !== '')   $env['STATE'] = $state;
 if ($country !== '') $env['COUNTRY'] = $country;
-if ($lat !== '')     $env['LATITUDE'] = $lat;
-if ($lon !== '')     $env['LONGITUDE'] = $lon;
+// Always set LATITUDE/LONGITUDE env keys (empty strings are acceptable and try.py handles fallbacks)
+$env['LATITUDE'] = $lat;
+$env['LONGITUDE'] = $lon;
 if ($fajr !== '')    $env['PRAYER_METHOD_ANGLES_FAJR'] = $fajr; // optional mapping
 if ($isha !== '')    $env['PRAYER_METHOD_ANGLES_ISHA'] = $isha;
 if ($madhab !== '')  $env['MADHAB'] = $madhab;
