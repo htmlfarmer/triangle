@@ -26,6 +26,40 @@ LONGITUDE = "" #77.2090
 PRAYER_METHOD_ANGLES = {"fajr": 18.0, "isha": 18.0}
 MADHAB = "hanafi"
 
+# --- allow overriding via environment variables (so wrappers like try.php can pass values)
+def _env_or(orig, name):
+    v = os.environ.get(name)
+    if v is None:
+        return orig
+    # preserve empty-string override (explicit)
+    return v
+
+LOCATION_MODE = (_env_or(LOCATION_MODE, 'LOCATION_MODE') or "").strip().upper()
+CITY = _env_or(CITY, 'CITY')
+STATE = _env_or(STATE, 'STATE')
+COUNTRY = _env_or(COUNTRY, 'COUNTRY')
+
+# LAT/LON: allow empty string or numeric; keep as string here and let helpers parse
+LATITUDE = _env_or(LATITUDE, 'LATITUDE')
+LONGITUDE = _env_or(LONGITUDE, 'LONGITUDE')
+
+# PRAYER_METHOD_ANGLES can be partially overridden via env e.g. PRAYER_FAJR, PRAYER_ISHA
+try:
+    fajr_env = os.environ.get('PRAYER_METHOD_ANGLES_FAJR')
+    isha_env = os.environ.get('PRAYER_METHOD_ANGLES_ISHA')
+    if fajr_env is not None and fajr_env != '':
+        PRAYER_METHOD_ANGLES['fajr'] = float(fajr_env)
+    if isha_env is not None and isha_env != '':
+        PRAYER_METHOD_ANGLES['isha'] = float(isha_env)
+except Exception:
+    pass
+
+MADHAB = _env_or(MADHAB, 'MADHAB') or MADHAB
+
+# capture GEOIP debug info if provided by wrappers
+GEOIP_DETECTED_IP = os.environ.get('GEOIP_DETECTED_IP', '')
+GEOIP_NOTE = os.environ.get('GEOIP_NOTE', '')
+
 # ==============================================================================
 # --- FOR OFFLINE USE ---
 # 1.  Download 'de421.bsp': Place this file in the same directory as the script.
@@ -350,7 +384,23 @@ def find_global_tide_locations(eph, ts):
 
 if __name__ == "__main__":
     mode = (LOCATION_MODE or "").strip().upper()
-    location = (get_location_by_ip() if mode == "AUTO" else get_location_by_coords(LATITUDE, LONGITUDE)) or get_location_by_address(CITY, STATE, COUNTRY)
+    # Prefer explicit environment-provided coordinates if present (even if LOCATION_MODE differs)
+    location = None
+    location_source = None
+    if LATITUDE is not None and LONGITUDE is not None and (str(LATITUDE).strip() != '' or str(LONGITUDE).strip() != ''):
+        coords_loc = get_location_by_coords(LATITUDE, LONGITUDE)
+        if coords_loc:
+            location = coords_loc
+            location_source = 'ENV_COORDS'
+
+    if not location:
+        if mode == "AUTO":
+            location = get_location_by_ip() or get_location_by_address(CITY, STATE, COUNTRY)
+            location_source = 'GEOIP' if location and mode == 'AUTO' else 'ADDRESS'
+        else:
+            location = get_location_by_coords(LATITUDE, LONGITUDE) or get_location_by_address(CITY, STATE, COUNTRY)
+            location_source = 'COORDS' if location and (LATITUDE or LONGITUDE) else 'ADDRESS'
+
     if not location:
         print("The cosmos remains veiled. Location could not be determined.")
     else:
@@ -367,6 +417,17 @@ if __name__ == "__main__":
         t0 = ts.from_datetime(now)
         
         print(f"\n--- Qibla-Numa Report for: {location['address']} at {now.strftime('%I:%M %p')} ---")
+        # provenance line: where the location came from (ENV coords, GEOIP, ADDRESS, etc.)
+        try:
+            prov = location_source if 'location_source' in locals() and location_source else 'UNKNOWN'
+        except Exception:
+            prov = 'UNKNOWN'
+        prov_parts = [f"source={prov}"]
+        if GEOIP_DETECTED_IP:
+            prov_parts.append(f"geoip_ip={GEOIP_DETECTED_IP}")
+        if GEOIP_NOTE:
+            prov_parts.append(f"geoip_note={GEOIP_NOTE}")
+        print("[" + ", ".join(prov_parts) + "]")
         
         sun_times = LocalPrayerCalculator(
             latitude=location['latitude'], longitude=location['longitude'],
