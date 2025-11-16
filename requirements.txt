@@ -1,0 +1,6 @@
+PyGObject
+python-dateutil
+requests
+geopy
+timezonefinder
+skyfield

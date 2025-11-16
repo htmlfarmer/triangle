@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Triangle
+Comment=Moon & Sun report (Triangle)
+Exec=python3 /home/asher/github/triangle/gui.py
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+Categories=Utility;Weather;
+StartupNotify=true
+StartupWMClass=Triangle
