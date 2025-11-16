@@ -4,6 +4,7 @@ import os
 import pytz
 import math
 import requests
+import warnings
 from datetime import datetime, timedelta
 from geopy.geocoders import Nominatim
 from timezonefinder import TimezoneFinder
@@ -11,6 +12,9 @@ from skyfield.api import load, wgs84
 from skyfield import almanac
 from skyfield.framelib import itrs
 from geopy.exc import GeocoderUnavailable, GeocoderTimedOut, GeocoderServiceError
+from requests.exceptions import RequestsDependencyWarning
+
+warnings.filterwarnings("ignore", category=RequestsDependencyWarning)
 
 # ==============================================================================
 # --- SANKALPA INSCRIPTION (THE SACRED DECREE) ---
