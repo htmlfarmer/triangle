@@ -42,10 +42,9 @@ LOCATION_MODE = (_env_or(LOCATION_MODE, 'LOCATION_MODE') or "").strip().upper()
 CITY = _env_or(CITY, 'CITY')
 STATE = _env_or(STATE, 'STATE')
 COUNTRY = _env_or(COUNTRY, 'COUNTRY')
-
-# LAT/LON: allow empty string or numeric; keep as string here and let helpers parse
 LATITUDE = _env_or(LATITUDE, 'LATITUDE')
 LONGITUDE = _env_or(LONGITUDE, 'LONGITUDE')
+MADHAB = _env_or(MADHAB, 'MADHAB') or MADHAB
 
 # PRAYER_METHOD_ANGLES can be partially overridden via env e.g. PRAYER_FAJR, PRAYER_ISHA
 try:
